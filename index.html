@@ -1,1 +1,414 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CatchUp - Full Task Management with Screenshot</title>
+     <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f4;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Floating Toolbar */
+        .toolbar {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(30, 30, 46, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .toolbar button {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 20px;
+            margin: 12px 0;
+            cursor: pointer;
+            transition: 0.3s ease;
+            padding: 10px;
+            border-radius: 8px;
+            width: 60px;
+            text-align: center;
+        }
+
+        .toolbar button:hover {
+            background-color: #4C8BF5;
+            transform: scale(1.1);
+        }
+
+        /* Modal styles for task creation */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal input, .modal textarea {
+            width: 100%;
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+
+        .modal button {
+            background-color: #4C8BF5;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal button:hover {
+            background-color: #5A9CFF;
+        }
+
+        /* General Styles */
+        .content {
+            margin-left: 60px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #333;
+        }
+
+        p {
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Screenshot Selection Box */
+        .selectBox {
+            position: absolute;
+            border: 2px dashed #4C8BF5;
+            background-color: rgba(0, 123, 255, 0.1);
+            cursor: crosshair;
+            display: none;
+            z-index: 999;
+        }
+
+        /* Style for the Thumbnail */
+        .thumbnail {
+            margin-top: 20px;
+            max-width: 150px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        #selectedAreaDisplay {
+            display: none;
+            margin-top: 20px;
+            color: #4C8BF5;
+            font-weight: bold;
+        }
+
+        /* Image icon style */
+        .image-icon {
+            width: 50px;
+            height: 50px;
+            background-color: #4C8BF5;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 22px;
+            margin-top: 10px;
+        }
+
+        /* Radio buttons for task/bug selection - Modern Style */
+        .taskTypeSelection {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .taskTypeSelection label {
+            padding: 10px 20px;
+            background-color: #f4f4f4;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .taskTypeSelection input[type="radio"] {
+            display: none; /* Hide radio button */
+        }
+
+        .taskTypeSelection input[type="radio"]:checked + label {
+            background-color: #4C8BF5;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Floating Panels */
+        .panel {
+            position: fixed;
+            right: -350px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 400px;
+            background-color: white;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .panel.active {
+            right: 20px;
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        /* Task List */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Chat */
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f8f8;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+
+        /* Settings */
+        .settings-options label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <button id="createTaskBtn">+</button>
+        <button id="chatBtn">💬</button>
+        <button id="taskListBtn">📋</button>
+        <button id="settingsBtn">⚙️</button>
+    </div>
+
+    <div class="content">
+        <h1>Welcome to CatchUp!</h1>
+        <p>Manage your tasks and bugs directly from this platform.</p>
+    </div>
+
+    <div class="modal" id="taskModal">
+        <h2>Create Task / Bug</h2>
+
+        <div class="taskTypeSelection">
+            <input type="radio" id="task" name="taskType" value="task" checked>
+            <label for="task">Task</label>
+
+            <input type="radio" id="bug" name="taskType" value="bug">
+            <label for="bug">Bug</label>
+        </div>
+
+        <input type="text" id="taskTitle" placeholder="Enter task title..." required>
+        <textarea id="taskDescription" placeholder="Describe the issue..." required></textarea>
+        <div id="selectedAreaDisplay">Area selected: <span id="areaDimensions"></span></div>
+        <div id="thumbnailContainer">
+            <p>Attached screenshot:</p>
+            <div id="imageIcon" class="image-icon" style="display: none;"></div>
+            <img id="thumbnail" class="thumbnail" src="" alt="Selected Area Screenshot" style="display: none;">
+        </div>
+        <button id="saveTaskBtn">Save & Send</button>
+        <button id="closeModalBtn">Close</button>
+    </div>
+
+    <div id="taskPanel" class="panel">
+        <h2> Task List</h2>
+        <div class="task-list">
+            <div class="task-item">Fix Login Bug <button>✔</button></div>
+            <div class="task-item">Add API Endpoint <button>✔</button></div>
+        </div>
+    </div>
+
+    <div id="chatPanel" class="panel">
+        <h2> Chat</h2>
+        <div class="chat-box"></div>
+        <input type="text" class="chat-input" placeholder="Type a message...">
+    </div>
+
+    <div id="settingsPanel" class="panel">
+        <h2>⚙️ Settings</h2>
+        <div class="settings-options">
+            <label> Jira Integration <input type="checkbox" checked></label>
+            <label> Azure DevOps <input type="checkbox"></label>
+            <label> Trello <input type="checkbox"></label>
+        </div>
+    </div>
+
+    <script>
+        // Show and hide modal
+        const createTaskBtn = document.getElementById('createTaskBtn');
+        const taskModal = document.getElementById('taskModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const selectedAreaDisplay = document.getElementById('selectedAreaDisplay');
+        const areaDimensions = document.getElementById('areaDimensions');
+        const thumbnailContainer = document.getElementById('thumbnailContainer');
+        const thumbnail = document.getElementById('thumbnail');
+        const imageIcon = document.getElementById('imageIcon');
+
+        createTaskBtn.addEventListener('click', () => {
+            taskModal.style.display = 'block';
+            setTimeout(() => taskModal.style.opacity = '1', 10);
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            taskModal.style.opacity = '0';
+            setTimeout(() => taskModal.style.display = 'none', 300);
+        });
+
+        // Save task functionality (simple mock)
+        document.getElementById('saveTaskBtn').addEventListener('click', () => {
+            const taskTitle = document.getElementById('taskTitle').value;
+            const taskDescription = document.getElementById('taskDescription').value;
+            const taskType = document.querySelector('input[name="taskType"]:checked').value;
+            if (taskTitle && taskDescription) {
+                alert(`Task Created: ${taskType}\nTitle: ${taskTitle}\nDescription: ${taskDescription}\nArea: ${areaDimensions.textContent}`);
+                taskModal.style.display = 'none';
+            } else {
+                alert('Please fill in both fields!');
+            }
+        });
+
+        // Select Area for Screenshot (Drag to Select)
+        let selectBox = document.createElement('div');
+        selectBox.classList.add('selectBox');
+        document.body.appendChild(selectBox);
+
+        let startX, startY;
+
+        document.addEventListener('mousedown', function(e) {
+            startX = e.pageX;
+            startY = e.pageY;
+            selectBox.style.left = `${startX}px`;
+            selectBox.style.top = `${startY}px`;
+            selectBox.style.width = '0';
+            selectBox.style.height = '0';
+            selectBox.style.display = 'block';
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        function onMouseMove(e) {
+            let width = e.pageX - startX;
+            let height = e.pageY - startY;
+            selectBox.style.width = Math.abs(width) + 'px';
+            selectBox.style.height = Math.abs(height) + 'px';
+            if (width < 0) selectBox.style.left = `${e.pageX}px`;
+            if (height < 0) selectBox.style.top = `${e.pageY}px`;
+            areaDimensions.textContent = `${Math.abs(width)}px x ${Math.abs(height)}px`;
+            selectedAreaDisplay.style.display = 'block';
+
+            // Create a screenshot or simulated thumbnail of the selected area (placeholder)
+            thumbnail.src = 'https://via.placeholder.com/150?text=Screenshot+Preview';
+            thumbnail.style.display = 'block';
+            imageIcon.style.display = 'none';  // Hide the icon when screenshot is available
+        }
+
+        function onMouseUp() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        // Floating Panels functionality
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('active');
+        }
+
+        document.getElementById('taskListBtn').addEventListener('click', () => togglePanel('taskPanel'));
+        document.getElementById('chatBtn').addEventListener('click', () => togglePanel('chatPanel'));
+        document.getElementById('settingsBtn').addEventListener('click', () => togglePanel('settingsPanel'));
+
+        // Chat functionality
+        document.querySelector('.chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const chatBox = document.querySelector('.chat-box');
+                const message = document.createElement('div');
+                message.textContent = this.value;
+                chatBox.appendChild(message);
+                this.value = '';
+            }
+        });
+    </script>
+
+</body>
+</html>
